@@ -2,13 +2,17 @@ import {
   AccessoryConfig,
   AccessoryPlugin,
   API,
+  Characteristic,
   CharacteristicEventTypes,
   CharacteristicGetCallback,
   CharacteristicSetCallback,
   CharacteristicValue,
+  Formats,
   HAP,
   Logging,
-  Service
+  Perms,
+  Service,
+  Units
 } from "homebridge";
 import suncalc from 'suncalc';
 
@@ -50,9 +54,9 @@ class SunProtect implements AccessoryPlugin {
   private readonly name: string;
   private active: boolean = false;
   private location: any;
-  private readonly refreshDelay: number = 60 * 5;
+  private readonly refreshDelay: number = 60 * 1;
 
-  private readonly activeSwitchService: Service;
+  private readonly service: Service;
   private readonly triggers: any[] = [];
   private readonly informationService: Service;
 
@@ -61,9 +65,12 @@ class SunProtect implements AccessoryPlugin {
     this.name = config.name;
     this.location = config.location;
 
-    this.activeSwitchService = new hap.Service.Switch(this.name, 'Active');
 
-    this.activeSwitchService.getCharacteristic(hap.Characteristic.On)
+    this.service = new hap.Service.Switch(this.name);
+    this.service.addCharacteristic(AltitudeCharacteristic);
+	  this.service.addCharacteristic(AzimuthCharacteristic);
+
+    this.service.getCharacteristic(hap.Characteristic.On)
       .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
         this.active = value as boolean;
         callback();
@@ -85,6 +92,9 @@ class SunProtect implements AccessoryPlugin {
     this.informationService = new hap.Service.AccessoryInformation()
       .setCharacteristic(hap.Characteristic.Manufacturer, "github.com/dubocr")
       .setCharacteristic(hap.Characteristic.Model, "SunProtect");
+    
+    setInterval(this.compute.bind(this), (this.refreshDelay * 1000));
+    this.compute();
 
     log.info("SunProtect initialized!");
   }
@@ -104,24 +114,27 @@ class SunProtect implements AccessoryPlugin {
   getServices(): Service[] {
     return [
       this.informationService,
-      this.activeSwitchService
+      this.service
     ].concat(this.triggers.map((t) => t.service));
   }
 
   compute(): void {
-    if(!this.active) {
-      return;
-    }
     const now = new Date();
     suncalc.getPosition(now, this.location.lat, this.location.long);
     var position = suncalc.getPosition(now, this.location.lat, this.location.long);
     var altitude = position.altitude * 180 / Math.PI;
     var azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
+    this.service.getCharacteristic(AltitudeCharacteristic).updateValue(altitude);
+    this.service.getCharacteristic(AzimuthCharacteristic).updateValue(azimuth);
+
+    if(!this.active) {
+      return;
+    }
     this.log.info('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
     if(altitude < 0 && azimuth > 180) {
       // End of day, disable
       this.active = false;
-      this.activeSwitchService.getCharacteristic(hap.Characteristic.On).updateValue(false);
+      this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
     }
     this.triggers.forEach((trigger) => {
       let match = true;
@@ -152,6 +165,39 @@ class SunProtect implements AccessoryPlugin {
         }
       }
     });
-    setTimeout(this.compute.bind(this), (this.refreshDelay * 1000));
+  }
+}
+
+class AltitudeCharacteristic extends Characteristic {
+  static UUID = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
+
+  constructor() {
+    super('Altitude', AltitudeCharacteristic.UUID);
+    this.setProps({
+      format: Formats.FLOAT,
+      unit: Units.ARC_DEGREE,
+      minValue: -90,
+      maxValue: 90,
+      minStep: 0.1,
+      perms: [Perms.PAIRED_READ, Perms.NOTIFY]
+    });
+    this.value = this.getDefaultValue();
+  }
+}
+
+class AzimuthCharacteristic extends Characteristic {
+  static UUID = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
+
+  constructor() {
+    super('Azimuth', AzimuthCharacteristic.UUID);
+    this.setProps({
+      format: Formats.FLOAT,
+      unit: Units.ARC_DEGREE,
+      minValue: 0,
+      maxValue: 360,
+      minStep: 0.1,
+      perms: [Perms.PAIRED_READ, Perms.NOTIFY]
+    });
+    this.value = this.getDefaultValue();
   }
 }
