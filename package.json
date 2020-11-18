@@ -1,0 +1,42 @@
+{
+  "name": "homebridge-sun-protect",
+  "version": "1.0.0",
+  "description": "An homebridge plugin to protect home from sun",
+  "main": "dist/accessory.js",
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "rimraf ./dist && tsc",
+    "prepublishOnly": "npm run build",
+    "postpublish": "npm run clean",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Romain DUBOC <romain@duboc.pro>",
+  "engines": {
+    "homebridge": ">=1.0.0"
+  },
+  "keywords": [
+    "homebridge-plugin"
+  ],
+  "license": "ISC",
+  "files": [
+    "LICENSE",
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dubocr/homebridge-sun-protect.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dubocr/homebridge-sun-protect.git/issues"
+  },
+  "devDependencies": {
+    "@types/node": "10.17.19",
+    "typescript": "^3.8.3",
+    "rimraf": "^3.0.2",
+    "homebridge": "^1.0.4"
+  },
+  "dependencies": {
+    "@types/suncalc": "^1.8.0",
+    "suncalc": "^1.8.0"
+  }
+}
