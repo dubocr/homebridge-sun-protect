@@ -142,13 +142,13 @@ class SunProtect implements AccessoryPlugin {
         match = match && azimuth > trigger.azimuthMin;
       }
       if(trigger.azimuthMax !== undefined) {
-        match = match && azimuth > trigger.azimuthMax;
+        match = match && azimuth < trigger.azimuthMax;
       }
       if(trigger.altitudeMin !== undefined) {
         match = match && altitude > trigger.altitudeMin;
       }
       if(trigger.altitudeMax !== undefined) {
-        match = match && altitude > trigger.altitudeMax;
+        match = match && altitude < trigger.altitudeMax;
       }
       if(match) {
         this.log.info(trigger.name + ' match criterias');
