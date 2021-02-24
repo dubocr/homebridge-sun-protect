@@ -1,6 +1,15 @@
 # homebridge-sun-protect
 
 This plugin offer simple Homekit accessory to configure shades automations depending on sun position.
+
+# Installation
+
+1. Install homebridge using: `npm install -g homebridge`
+2. Install this plugin using: `npm install -g homebridge-tahoma`
+3. Update your configuration file. See bellow for a sample.
+
+# Configuration
+
 1. Configure your lat/long coordinate
 2. Create plugin config with name, azimuthMin, azimuthMax, altitudeMin, altitudeMax for each trigger (generally one by shade orientation)
 3. Configure your shade closure in Homekit

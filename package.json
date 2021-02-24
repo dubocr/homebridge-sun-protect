@@ -1,6 +1,6 @@
 {
   "name": "homebridge-sun-protect",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "An homebridge plugin to protect home from sun",
   "main": "dist/accessory.js",
   "scripts": {
