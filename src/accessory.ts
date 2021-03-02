@@ -45,7 +45,6 @@ export = (api: API) => {
   hap = api.hap;
 
   class SunProtect implements AccessoryPlugin {
-
     private readonly log: Logging;
     private readonly name: string;
     private active: boolean = false;
