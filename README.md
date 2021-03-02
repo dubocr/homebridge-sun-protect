@@ -5,7 +5,7 @@ This plugin offer simple Homekit accessory to configure shades automations depen
 # Installation
 
 1. Install homebridge using: `npm install -g homebridge`
-2. Install this plugin using: `npm install -g homebridge-tahoma`
+2. Install this plugin using: `npm install -g homebridge-sun-protect`
 3. Update your configuration file. See bellow for a sample.
 
 # Configuration
