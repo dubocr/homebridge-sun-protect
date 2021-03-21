@@ -10,7 +10,7 @@
     "build": "rimraf ./dist && tsc",
     "prepublishOnly": "npm run lint && npm run build",
     "postpublish": "npm run clean",
-    "release": "npm run lint && npm version patch --m 'Release %s' && npm publish"
+    "release": "npm run lint && npm version patch --m 'Release %s' && npm publish",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Romain DUBOC <dubocr@gmail.com>",
