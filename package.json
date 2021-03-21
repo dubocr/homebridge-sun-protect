@@ -4,10 +4,13 @@
   "description": "An homebridge plugin to protect home from sun",
   "main": "dist/accessory.js",
   "scripts": {
+    "lint": "eslint src/**.ts",
+    "watch": "npm run build && npm link && nodemon",
     "clean": "rimraf ./dist",
     "build": "rimraf ./dist && tsc",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run lint && npm run build",
     "postpublish": "npm run clean",
+    "release": "npm run lint && npm version patch --m 'Release %s' --force && npm publish",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Romain DUBOC <romain@duboc.pro>",
@@ -30,6 +33,7 @@
     "url": "https://github.com/dubocr/homebridge-sun-protect.git/issues"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^3.10.1",
     "@types/node": "10.17.19",
     "homebridge": "^1.1.7",
     "rimraf": "^3.0.2",
