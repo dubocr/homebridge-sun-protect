@@ -1,19 +1,19 @@
 import {
-  AccessoryConfig,
-  AccessoryPlugin,
-  API,
-  Characteristic,
-  CharacteristicEventTypes,
-  CharacteristicSetCallback,
-  CharacteristicValue,
-  Formats,
-  HAP,
-  Logging,
-  Perms,
-  Service,
-  Units,
-  WithUUID
-} from "homebridge";
+    AccessoryConfig,
+    AccessoryPlugin,
+    API,
+    Characteristic,
+    CharacteristicEventTypes,
+    CharacteristicSetCallback,
+    CharacteristicValue,
+    Formats,
+    HAP,
+    Logging,
+    Perms,
+    Service,
+    Units,
+    WithUUID,
+} from 'homebridge';
 import suncalc from 'suncalc';
 
 /*
@@ -46,43 +46,43 @@ let AzimuthCharacteristic: WithUUID<{new (): Characteristic}>;
  * Initializer function called when the plugin is loaded.
  */
 export = (api: API) => {
-  hap = api.hap;
+    hap = api.hap;
   
-  AltitudeCharacteristic = class extends hap.Characteristic {
+    AltitudeCharacteristic = class extends hap.Characteristic {
 
     public static readonly UUID: string = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
   
     constructor() {
-      super('Altitude', AltitudeCharacteristic.UUID, {
-        format: Formats.FLOAT,
-        unit: Units.ARC_DEGREE,
-        minValue: -90,
-        maxValue: 90,
-        minStep: 0.1,
-        perms: [Perms.PAIRED_READ, Perms.NOTIFY]
-      });
-      this.value = this.getDefaultValue();
+        super('Altitude', AltitudeCharacteristic.UUID, {
+            format: Formats.FLOAT,
+            unit: Units.ARC_DEGREE,
+            minValue: -90,
+            maxValue: 90,
+            minStep: 0.1,
+            perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+        });
+        this.value = this.getDefaultValue();
     }
-  }
+    };
 
-  AzimuthCharacteristic = class extends hap.Characteristic {
+    AzimuthCharacteristic = class extends hap.Characteristic {
 
     public static readonly UUID: string = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
   
     constructor() {
-      super('Azimuth', AzimuthCharacteristic.UUID, {
-        format: Formats.FLOAT,
-        unit: Units.ARC_DEGREE,
-        minValue: 0,
-        maxValue: 360,
-        minStep: 0.1,
-        perms: [Perms.PAIRED_READ, Perms.NOTIFY]
-      });
-      this.value = this.getDefaultValue();
+        super('Azimuth', AzimuthCharacteristic.UUID, {
+            format: Formats.FLOAT,
+            unit: Units.ARC_DEGREE,
+            minValue: 0,
+            maxValue: 360,
+            minStep: 0.1,
+            perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+        });
+        this.value = this.getDefaultValue();
     }
-  }
+    };
 
-  api.registerAccessory("SunProtect", SunProtect);
+    api.registerAccessory('SunProtect', SunProtect);
 };
 
 
@@ -90,51 +90,52 @@ export = (api: API) => {
 class SunProtect implements AccessoryPlugin {
   private readonly log: Logging;
   private readonly name: string;
-  private active: boolean = false;
-  private location: any;
+  private active = false;
+  private location: unknown;
   private readonly refreshDelay: number = 60 * 1;
 
   private readonly service: Service;
-  private readonly triggers: any[] = [];
+  private readonly triggers: unknown[] = [];
   private readonly informationService: Service;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(log: Logging, config: AccessoryConfig, api: API) {
-    this.log = log;
-    this.name = config.name;
-    this.location = config.location;
+      this.log = log;
+      this.name = config.name;
+      this.location = config.location;
 
 
-    this.service = new hap.Service.Switch(this.name);
-    this.service.addCharacteristic(AltitudeCharacteristic);
-    this.service.addCharacteristic(AzimuthCharacteristic);
+      this.service = new hap.Service.Switch(this.name);
+      this.service.addCharacteristic(AltitudeCharacteristic);
+      this.service.addCharacteristic(AzimuthCharacteristic);
 
-    this.service.getCharacteristic(hap.Characteristic.On)
-      .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
-        this.active = value as boolean;
-        callback();
-        this.triggers.forEach((trigger) => trigger.triggered = undefined);
-        this.compute();
-      });
+      this.service.getCharacteristic(hap.Characteristic.On)
+          .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
+              this.active = value as boolean;
+              callback();
+              this.triggers.forEach((trigger) => trigger.triggered = undefined);
+              this.compute();
+          });
 
-    let i = 1;
-    for(const trigger of config.triggers) {
-      trigger.service = new hap.Service.StatelessProgrammableSwitch(trigger.name, ""+i);
-      trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setProps({minValue: 0, maxValue: 1});
-      trigger.service.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
-      trigger.service.addOptionalCharacteristic(hap.Characteristic.Name);
-      trigger.service.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
-      trigger.service.getCharacteristic(hap.Characteristic.Name).setValue(trigger.name);
-      this.triggers.push(trigger);
-    }
+      let i = 1;
+      for(const trigger of config.triggers) {
+          trigger.service = new hap.Service.StatelessProgrammableSwitch(trigger.name, ''+i);
+          trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setProps({minValue: 0, maxValue: 1});
+          trigger.service.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
+          trigger.service.addOptionalCharacteristic(hap.Characteristic.Name);
+          trigger.service.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
+          trigger.service.getCharacteristic(hap.Characteristic.Name).setValue(trigger.name);
+          this.triggers.push(trigger);
+      }
 
-    this.informationService = new hap.Service.AccessoryInformation()
-      .setCharacteristic(hap.Characteristic.Manufacturer, "github.com/dubocr")
-      .setCharacteristic(hap.Characteristic.Model, "SunProtect");
+      this.informationService = new hap.Service.AccessoryInformation()
+          .setCharacteristic(hap.Characteristic.Manufacturer, 'github.com/dubocr')
+          .setCharacteristic(hap.Characteristic.Model, 'SunProtect');
     
-    setInterval(this.compute.bind(this), (this.refreshDelay * 1000));
-    this.compute();
+      setInterval(this.compute.bind(this), (this.refreshDelay * 1000));
+      this.compute();
 
-    log.info("SunProtect initialized!");
+      log.info('SunProtect initialized!');
   }
 
   /*
@@ -142,7 +143,7 @@ class SunProtect implements AccessoryPlugin {
    * Typical this only ever happens at the pairing process.
    */
   identify(): void {
-    this.log("Identify!");
+      this.log('Identify!');
   }
 
   /*
@@ -150,58 +151,58 @@ class SunProtect implements AccessoryPlugin {
    * It should return all services which should be added to the accessory.
    */
   getServices(): Service[] {
-    return [
-      this.informationService,
-      this.service
-    ].concat(this.triggers.map((t) => t.service));
+      return [
+          this.informationService,
+          this.service,
+      ].concat(this.triggers.map((t) => t.service));
   }
 
   compute(): void {
-    const now = new Date();
-    suncalc.getPosition(now, this.location.lat, this.location.long);
-    var position = suncalc.getPosition(now, this.location.lat, this.location.long);
-    var altitude = position.altitude * 180 / Math.PI;
-    var azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
-    this.service.getCharacteristic(AltitudeCharacteristic).updateValue(altitude);
-    this.service.getCharacteristic(AzimuthCharacteristic).updateValue(azimuth);
+      const now = new Date();
+      suncalc.getPosition(now, this.location.lat, this.location.long);
+      const position = suncalc.getPosition(now, this.location.lat, this.location.long);
+      const altitude = position.altitude * 180 / Math.PI;
+      const azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
+      this.service.getCharacteristic(AltitudeCharacteristic).updateValue(altitude);
+      this.service.getCharacteristic(AzimuthCharacteristic).updateValue(azimuth);
 
-    if(!this.active) {
-      return;
-    }
-    this.log.info('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
-    if(altitude < 0 && azimuth > 180) {
+      if(!this.active) {
+          return;
+      }
+      this.log.info('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
+      if(altitude < 0 && azimuth > 180) {
       // End of day, disable
-      this.active = false;
-      this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
-    }
-    this.triggers.forEach((trigger) => {
-      let match = true;
-      if(trigger.azimuthMin !== undefined) {
-        match = match && azimuth > trigger.azimuthMin;
+          this.active = false;
+          this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
       }
-      if(trigger.azimuthMax !== undefined) {
-        match = match && azimuth < trigger.azimuthMax;
-      }
-      if(trigger.altitudeMin !== undefined) {
-        match = match && altitude > trigger.altitudeMin;
-      }
-      if(trigger.altitudeMax !== undefined) {
-        match = match && altitude < trigger.altitudeMax;
-      }
-      if(match) {
-        this.log.info(trigger.name + ' match criterias');
-        if(trigger.triggered !== true) {
-          this.log.info('Start trigger ' + trigger.name);
-          trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(0);
-          trigger.triggered = true;
-        }
-      } else {
-        if(trigger.triggered !== false) {
-          this.log.info('End trigger ' + trigger.name);
-          trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(1);
-          trigger.triggered = false;
-        }
-      }
-    });
+      this.triggers.forEach((trigger) => {
+          let match = true;
+          if(trigger.azimuthMin !== undefined) {
+              match = match && azimuth > trigger.azimuthMin;
+          }
+          if(trigger.azimuthMax !== undefined) {
+              match = match && azimuth < trigger.azimuthMax;
+          }
+          if(trigger.altitudeMin !== undefined) {
+              match = match && altitude > trigger.altitudeMin;
+          }
+          if(trigger.altitudeMax !== undefined) {
+              match = match && altitude < trigger.altitudeMax;
+          }
+          if(match) {
+              this.log.info(trigger.name + ' match criterias');
+              if(trigger.triggered !== true) {
+                  this.log.info('Start trigger ' + trigger.name);
+                  trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(0);
+                  trigger.triggered = true;
+              }
+          } else {
+              if(trigger.triggered !== false) {
+                  this.log.info('End trigger ' + trigger.name);
+                  trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(1);
+                  trigger.triggered = false;
+              }
+          }
+      });
   }
 }
