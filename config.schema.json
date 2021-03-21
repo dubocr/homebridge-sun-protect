@@ -1,0 +1,65 @@
+{
+  "pluginAlias": "SunProtect",
+  "pluginType": "accessory",
+  "singular": false,
+  "headerDisplay": "Plugin will add 2 accessories : one switch to enable triggers and stateless buttons used to configure automation.\n\nActivate the switch when wether is sunny (with luminosity sensor for eg.) and when you are wake-up (with motion sensor for eg.).\nThe switch automatically move to 'off' when sun sets.\n\nConfigure the stateless button as following:There is one button by rule configured in plugin config.\n- 1 press button is triggered when condition starts (sun present)\n- 2 press button is triggered when condition stops (sun absent)\n\nWhen main switch is switched on, if a rule match it will be triggered.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "description": "Name of your widget",
+        "type": "string",
+        "required": true,
+        "default": "Sun"
+      },
+      "location": {
+        "title": "Home Location",
+        "type": "object",
+        "required": true,
+        "properties": {
+          "lat": {
+            "title": "Latitude",
+            "type": "number",
+            "required": true
+          },
+          "long": {
+            "title": "Longitude",
+            "type": "number",
+            "required": true
+          }
+        }
+      },
+      "triggers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true,
+              "description": "Name of your trigger (eg. 1st floor - South East)"
+            },
+            "azimuthMin": {
+              "title": "Azimuth Min",
+              "type": "number"
+            },
+            "azimuthMax": {
+              "title": "Azimuth Max",
+              "type": "number"
+            },
+            "altitudeMin": {
+              "title": "Altitude Max",
+              "type": "number"
+            },
+            "altitudeMax": {
+              "title": "Altitude Max",
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}
