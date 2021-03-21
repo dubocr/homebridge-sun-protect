@@ -91,11 +91,11 @@ class SunProtect implements AccessoryPlugin {
   private readonly log: Logging;
   private readonly name: string;
   private active = false;
-  private location: unknown;
+  private location: any;
   private readonly refreshDelay: number = 60 * 1;
 
   private readonly service: Service;
-  private readonly triggers: unknown[] = [];
+  private readonly triggers: any[] = [];
   private readonly informationService: Service;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
