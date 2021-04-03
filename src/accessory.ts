@@ -19,7 +19,8 @@ import suncalc from 'suncalc';
 /*
  * IMPORTANT NOTICE
  *
- * One thing you need to take care of is, that you never ever ever import anything directly from the "homebridge" module (or the "hap-nodejs" module).
+ * One thing you need to take care of is, that you never ever ever import anything directly 
+ * from the "homebridge" module (or the "hap-nodejs" module).
  * The above import block may seem like, that we do exactly that, but actually those imports are only used for types and interfaces
  * and will disappear once the code is compiled to Javascript.
  * In fact you can check that by running `npm run build` and opening the compiled Javascript file in the `dist` folder.
@@ -85,17 +86,31 @@ export = (api: API) => {
     api.registerAccessory('SunProtect', SunProtect);
 };
 
+interface Location {
+    lat: number,
+    long: number,
+}
 
+interface Trigger {
+    name: string,
+    azimuthMin: number,
+    azimuthMax: number,
+    altitudeMin: number,
+    altitudeMax: number,
+    triggered: boolean | undefined,
+    service: Service,
+}
 
 class SunProtect implements AccessoryPlugin {
   private readonly log: Logging;
   private readonly name: string;
   private active = false;
-  private location: any;
+  private location: Location;
+
   private readonly refreshDelay: number = 60 * 1;
 
   private readonly service: Service;
-  private readonly triggers: any[] = [];
+  private readonly triggers: Array<Trigger> = [];
   private readonly informationService: Service;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
