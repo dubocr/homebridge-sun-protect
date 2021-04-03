@@ -50,36 +50,36 @@ export = (api: API) => {
   
     AltitudeCharacteristic = class extends hap.Characteristic {
 
-    public static readonly UUID: string = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
-  
-    constructor() {
-        super('Altitude', AltitudeCharacteristic.UUID, {
-            format: Formats.FLOAT,
-            unit: Units.ARC_DEGREE,
-            minValue: -90,
-            maxValue: 90,
-            minStep: 0.1,
-            perms: [Perms.PAIRED_READ, Perms.NOTIFY],
-        });
-        this.value = this.getDefaultValue();
-    }
+        public static readonly UUID: string = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
+    
+        constructor() {
+            super('Altitude', AltitudeCharacteristic.UUID, {
+                format: Formats.FLOAT,
+                unit: Units.ARC_DEGREE,
+                minValue: -90,
+                maxValue: 90,
+                minStep: 0.1,
+                perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+            });
+            this.value = this.getDefaultValue();
+        }
     };
 
     AzimuthCharacteristic = class extends hap.Characteristic {
 
-    public static readonly UUID: string = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
-  
-    constructor() {
-        super('Azimuth', AzimuthCharacteristic.UUID, {
-            format: Formats.FLOAT,
-            unit: Units.ARC_DEGREE,
-            minValue: 0,
-            maxValue: 360,
-            minStep: 0.1,
-            perms: [Perms.PAIRED_READ, Perms.NOTIFY],
-        });
-        this.value = this.getDefaultValue();
-    }
+        public static readonly UUID: string = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
+    
+        constructor() {
+            super('Azimuth', AzimuthCharacteristic.UUID, {
+                format: Formats.FLOAT,
+                unit: Units.ARC_DEGREE,
+                minValue: 0,
+                maxValue: 360,
+                minStep: 0.1,
+                perms: [Perms.PAIRED_READ, Perms.NOTIFY],
+            });
+            this.value = this.getDefaultValue();
+        }
     };
 
     api.registerAccessory('SunProtect', SunProtect);
@@ -169,7 +169,7 @@ class SunProtect implements AccessoryPlugin {
       if(!this.active) {
           return;
       }
-      this.log.info('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
+      this.log.debug('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
       if(altitude < 0 && azimuth > 180) {
       // End of day, disable
           this.active = false;
@@ -190,7 +190,7 @@ class SunProtect implements AccessoryPlugin {
               match = match && altitude < trigger.altitudeMax;
           }
           if(match) {
-              this.log.info(trigger.name + ' match criterias');
+              this.log.debug(trigger.name + ' match criterias');
               if(trigger.triggered !== true) {
                   this.log.info('Start trigger ' + trigger.name);
                   trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(0);
