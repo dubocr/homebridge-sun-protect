@@ -106,6 +106,7 @@ class SunProtect implements AccessoryPlugin {
   private readonly name: string;
   private active = false;
   private location: Location;
+  private resetOnActivation = true;
 
   private readonly refreshDelay: number = 60 * 1;
 
@@ -118,6 +119,7 @@ class SunProtect implements AccessoryPlugin {
       this.log = log;
       this.name = config.name;
       this.location = config.location;
+      this.resetOnActivation = config.resetOnActivation === false ? false : true;
 
 
       this.service = new hap.Service.Switch(this.name);
@@ -128,7 +130,9 @@ class SunProtect implements AccessoryPlugin {
           .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
               this.active = value as boolean;
               callback();
-              this.triggers.forEach((trigger) => trigger.triggered = undefined);
+              if(this.resetOnActivation) {
+                this.triggers.forEach((trigger) => trigger.triggered = undefined);
+              }
               this.compute();
           });
 
@@ -186,9 +190,9 @@ class SunProtect implements AccessoryPlugin {
       }
       this.log.debug('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
       if(altitude < 0 && azimuth > 180) {
-      // End of day, disable
-          this.active = false;
-          this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
+        // End of day, disable
+        this.active = false;
+        this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
       }
       this.triggers.forEach((trigger) => {
           let match = true;
