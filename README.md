@@ -26,8 +26,6 @@ There is one button by rule configured in plugin config.
 
 When main switch is switched on, if a rule match it will be triggered.
 
-`resetOnActivation` could be set to false to avoid reseting all trigger at activation
-
 Full configuration example:
 ```
 {
@@ -45,7 +43,6 @@ Full configuration example:
                 "lat": 46.123456,
                 "long": -1.123456
             },
-            "resetOnActivation": false,
             "triggers": [
                 {
                     "name": "1st floor - South East",

@@ -3,8 +3,6 @@ import {
     AccessoryPlugin,
     API,
     Characteristic,
-    CharacteristicEventTypes,
-    CharacteristicSetCallback,
     CharacteristicValue,
     Formats,
     HAP,
@@ -40,19 +38,19 @@ import suncalc from 'suncalc';
  * like this for example and used to access all exported variables and classes from HAP-NodeJS.
  */
 let hap: HAP;
-let AltitudeCharacteristic: WithUUID<{new (): Characteristic}>;
-let AzimuthCharacteristic: WithUUID<{new (): Characteristic}>;
+let AltitudeCharacteristic: WithUUID<{ new(): Characteristic }>;
+let AzimuthCharacteristic: WithUUID<{ new(): Characteristic }>;
 
 /*
  * Initializer function called when the plugin is loaded.
  */
 export = (api: API) => {
     hap = api.hap;
-  
+
     AltitudeCharacteristic = class extends hap.Characteristic {
 
         public static readonly UUID: string = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
-    
+
         constructor() {
             super('Altitude', AltitudeCharacteristic.UUID, {
                 format: Formats.FLOAT,
@@ -69,7 +67,7 @@ export = (api: API) => {
     AzimuthCharacteristic = class extends hap.Characteristic {
 
         public static readonly UUID: string = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
-    
+
         constructor() {
             super('Azimuth', AzimuthCharacteristic.UUID, {
                 format: Formats.FLOAT,
@@ -98,130 +96,135 @@ interface Trigger {
     altitudeMin: number,
     altitudeMax: number,
     triggered: boolean | undefined,
-    service: Service,
+    switch: Characteristic,
 }
 
+const TRIGGER_ON = 0;
+const TRIGGER_OFF = 1;
+
 class SunProtect implements AccessoryPlugin {
-  private readonly log: Logging;
-  private readonly name: string;
-  private active = false;
-  private location: Location;
-  private resetOnActivation = true;
+    private readonly log: Logging;
+    private readonly name: string;
+    private location: Location;
 
-  private readonly refreshDelay: number = 60 * 1;
+    private readonly refreshDelay: number = 60 * 1;
 
-  private readonly service: Service;
-  private readonly triggers: Array<Trigger> = [];
-  private readonly informationService: Service;
+    private readonly active: Characteristic;
+    private readonly altitude: Characteristic;
+    private readonly azimuth: Characteristic;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(log: Logging, config: AccessoryConfig, api: API) {
-      this.log = log;
-      this.name = config.name;
-      this.location = config.location;
-      this.resetOnActivation = config.resetOnActivation === false ? false : true;
+    private readonly triggers: Array<Trigger> = [];
+    private readonly services: Array<Service> = [];
 
+    constructor(log: Logging, config: AccessoryConfig) {
+        this.log = log;
+        this.name = config.name;
+        this.location = config.location;
 
-      this.service = new hap.Service.Switch(this.name);
-      this.service.addCharacteristic(AltitudeCharacteristic);
-      this.service.addCharacteristic(AzimuthCharacteristic);
+        const activeService = new hap.Service.Switch(this.name);
+        this.altitude = activeService.addCharacteristic(AltitudeCharacteristic);
+        this.azimuth = activeService.addCharacteristic(AzimuthCharacteristic);
+        this.active = activeService.getCharacteristic(hap.Characteristic.On);
 
-      this.service.getCharacteristic(hap.Characteristic.On)
-          .on(CharacteristicEventTypes.SET, (value: CharacteristicValue, callback: CharacteristicSetCallback) => {
-              this.active = value as boolean;
-              callback();
-              if(this.resetOnActivation) {
-                this.triggers.forEach((trigger) => trigger.triggered = undefined);
-              }
-              this.compute();
-          });
+        this.active.onSet(this.onActivate.bind(this));
+        this.services.push(activeService);
 
-      let i = 1;
-      for(const trigger of config.triggers) {
-          trigger.service = new hap.Service.StatelessProgrammableSwitch(trigger.name, ''+i);
-          trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setProps({minValue: 0, maxValue: 1});
-          trigger.service.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
-          trigger.service.addOptionalCharacteristic(hap.Characteristic.Name);
-          trigger.service.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
-          trigger.service.getCharacteristic(hap.Characteristic.Name).setValue(trigger.name);
-          this.triggers.push(trigger);
-      }
+        let i = 1;
+        for (const trigger of config.triggers) {
+            const triggerService = new hap.Service.StatelessProgrammableSwitch(trigger.name, '' + i);
+            triggerService.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
+            triggerService.addOptionalCharacteristic(hap.Characteristic.Name);
+            triggerService.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
+            triggerService.getCharacteristic(hap.Characteristic.Name).setValue(trigger.name);
 
-      this.informationService = new hap.Service.AccessoryInformation()
-          .setCharacteristic(hap.Characteristic.Manufacturer, 'github.com/dubocr')
-          .setCharacteristic(hap.Characteristic.Model, 'SunProtect');
-    
-      setInterval(this.compute.bind(this), (this.refreshDelay * 1000));
-      this.compute();
+            trigger.switch = triggerService.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent);
+            trigger.switch.setProps({ minValue: 0, maxValue: 1 });
+            trigger.switch.value = TRIGGER_OFF;
 
-      log.info('SunProtect initialized!');
-  }
+            this.triggers.push(trigger);
+            this.services.push(triggerService);
+        }
 
-  /*
-   * This method is optional to implement. It is called when HomeKit ask to identify the accessory.
-   * Typical this only ever happens at the pairing process.
-   */
-  identify(): void {
-      this.log('Identify!');
-  }
+        const informationService = new hap.Service.AccessoryInformation()
+            .setCharacteristic(hap.Characteristic.Manufacturer, 'github.com/dubocr')
+            .setCharacteristic(hap.Characteristic.Model, 'SunProtect');
+        this.services.push(informationService);
 
-  /*
-   * This method is called directly after creation of this instance.
-   * It should return all services which should be added to the accessory.
-   */
-  getServices(): Service[] {
-      return [
-          this.informationService,
-          this.service,
-      ].concat(this.triggers.map((t) => t.service));
-  }
+        setInterval(() => this.compute(this.active.value as boolean), (this.refreshDelay * 1000));
+        this.compute(false);
 
-  compute(): void {
-      const now = new Date();
-      suncalc.getPosition(now, this.location.lat, this.location.long);
-      const position = suncalc.getPosition(now, this.location.lat, this.location.long);
-      const altitude = position.altitude * 180 / Math.PI;
-      const azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
-      this.service.getCharacteristic(AltitudeCharacteristic).updateValue(altitude);
-      this.service.getCharacteristic(AzimuthCharacteristic).updateValue(azimuth);
+        log.info('SunProtect initialized!');
+    }
 
-      if(!this.active) {
-          return;
-      }
-      this.log.debug('Altitude: ' + Math.round(altitude*100)/100 + ' - Azimuth: ' + Math.round(azimuth*100)/100);
-      if(altitude < 0 && azimuth > 180) {
-        // End of day, disable
-        this.active = false;
-        this.service.getCharacteristic(hap.Characteristic.On).updateValue(false);
-      }
-      this.triggers.forEach((trigger) => {
-          let match = true;
-          if(trigger.azimuthMin !== undefined) {
-              match = match && azimuth > trigger.azimuthMin;
-          }
-          if(trigger.azimuthMax !== undefined) {
-              match = match && azimuth < trigger.azimuthMax;
-          }
-          if(trigger.altitudeMin !== undefined) {
-              match = match && altitude > trigger.altitudeMin;
-          }
-          if(trigger.altitudeMax !== undefined) {
-              match = match && altitude < trigger.altitudeMax;
-          }
-          if(match) {
-              this.log.debug(trigger.name + ' match criterias');
-              if(trigger.triggered !== true) {
-                  this.log.info('Start trigger ' + trigger.name);
-                  trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(0);
-                  trigger.triggered = true;
-              }
-          } else {
-              if(trigger.triggered !== false) {
-                  this.log.info('End trigger ' + trigger.name);
-                  trigger.service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent).setValue(1);
-                  trigger.triggered = false;
-              }
-          }
-      });
-  }
+    private onActivate(value: CharacteristicValue) {
+        if (value) {
+            this.compute(value as boolean);
+        } else {
+            this.triggers.forEach((trigger) => trigger.switch.updateValue(TRIGGER_OFF));
+        }
+    }
+
+    /*
+     * This method is optional to implement. It is called when HomeKit ask to identify the accessory.
+     * Typical this only ever happens at the pairing process.
+     */
+    identify(): void {
+        this.log('Identify!');
+    }
+
+    /*
+     * This method is called directly after creation of this instance.
+     * It should return all services which should be added to the accessory.
+     */
+    getServices(): Service[] {
+        return this.services;
+    }
+
+    compute(active: boolean): void {
+        const now = new Date();
+        suncalc.getPosition(now, this.location.lat, this.location.long);
+        const position = suncalc.getPosition(now, this.location.lat, this.location.long);
+        const altitude = position.altitude * 180 / Math.PI;
+        const azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
+        this.altitude.updateValue(altitude);
+        this.azimuth.updateValue(azimuth);
+
+        if (!active) {
+            return;
+        }
+
+        this.log.debug('Altitude: ' + Math.round(altitude * 100) / 100 + ' - Azimuth: ' + Math.round(azimuth * 100) / 100);
+        if (altitude < 0 && azimuth > 180) {
+            // End of day, disable
+            this.active.updateValue(false);
+            this.triggers.forEach((trigger) => trigger.switch.value = TRIGGER_OFF);
+        }
+        this.triggers.forEach((trigger) => {
+            let match = true;
+            if (trigger.azimuthMin !== undefined) {
+                match = match && azimuth > trigger.azimuthMin;
+            }
+            if (trigger.azimuthMax !== undefined) {
+                match = match && azimuth < trigger.azimuthMax;
+            }
+            if (trigger.altitudeMin !== undefined) {
+                match = match && altitude > trigger.altitudeMin;
+            }
+            if (trigger.altitudeMax !== undefined) {
+                match = match && altitude < trigger.altitudeMax;
+            }
+            if (match) {
+                this.log.debug(trigger.name + ' match criterias');
+                if (trigger.switch.value !== TRIGGER_ON) {
+                    this.log.info('Start trigger ' + trigger.name);
+                    trigger.switch.setValue(TRIGGER_ON);
+                }
+            } else {
+                if (trigger.switch.value !== TRIGGER_OFF) {
+                    this.log.info('End trigger ' + trigger.name);
+                    trigger.switch.setValue(TRIGGER_OFF);
+                }
+            }
+        });
+    }
 }
