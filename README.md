@@ -11,20 +11,22 @@ This plugin offer simple Homekit accessory to configure shades automations depen
 # Configuration
 
 1. Configure your lat/long coordinate
-2. Create plugin config with name, azimuthMin, azimuthMax, altitudeMin, altitudeMax for each trigger (generally one by shade orientation)
+2. Create plugin config with zone name (generally one by shade orientation) and trigger(s) restricted by azimuthMin, azimuthMax, altitudeMin and/or altitudeMax condition(s)
 3. Configure your shade closure in Homekit
 
-Plugin will add 2 accessories : one switch to enable triggers and stateless buttons used to configure automation.
+Plugin will add 2 accessories : one switch to enable triggers computation and stateless buttons used to configure automation.
 
 Activate the switch when wether is sunny (with luminosity sensor for eg.) and when you are wake-up (with motion sensor for eg.).
 The switch automatically move to 'off' when sun sets.
 
 Configure the stateless button as following:
-There is one button by rule configured in plugin config.
-- 1 press button is triggered when condition starts (sun present)
-- 2 press button is triggered when condition stops (sun absent)
+There is one button by zone configured in plugin config.
+- 1 press button is triggered when condition stops: no trigger match
+- 2-3 press button is triggered when first trigger conditions matches
 
-When main switch is switched on, if a rule match it will be triggered.
+When main switch is switched off, 1 press button will be triggered for each zone.
+
+LIMITATION : All zone must have 2nd trigger in config to activate 3rd press button
 
 Full configuration example:
 ```
@@ -43,30 +45,45 @@ Full configuration example:
                 "lat": 46.123456,
                 "long": -1.123456
             },
-            "triggers": [
+            "zones": [
                 {
                     "name": "1st floor - South East",
-                    "azimuthMin": 80,
-                    "azimuthMax": 240,
-                    "altitudeMin": 0
+                    "triggers": [
+                        {
+                            "azimuthMin": 100,
+                            "azimuthMax": 150
+                        }
+                    ]
                 },
                 {
                     "name": "1st floor - South",
-                    "azimuthMin": 95,
-                    "azimuthMax": 240,
-                    "altitudeMin": 20
+                    "triggers": [
+                        {
+                            "azimuthMin": 95,
+                            "azimuthMax": 240,
+                            "altitudeMin": 20
+                        }
+                    ]
                 },
                 {
                     "name": "Living room",
-                    "azimuthMin": 150,
-                    "azimuthMax": 260,
-                    "altitudeMin": 10
+                    "triggers": [
+                        {
+                            "azimuthMin": 150,
+                            "azimuthMax": 260,
+                            "altitudeMin": 10
+                        }
+                    ]
                 },
                 {
                     "name": "Kitchen",
-                    "azimuthMin": 150,
-                    "azimuthMax": 285,
-                    "altitudeMin": 15
+                    "triggers": [
+                        {
+                            "azimuthMin": 150,
+                            "azimuthMax": 285,
+                            "altitudeMin": 15
+                        }
+                    ]
                 }
             ]
         }

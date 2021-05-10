@@ -89,18 +89,21 @@ interface Location {
     long: number,
 }
 
-interface Trigger {
+interface Zone {
     name: string,
+    triggers: Array<Trigger>,
+    switch: Characteristic,
+}
+
+interface Trigger {
     azimuthMin: number,
     azimuthMax: number,
     altitudeMin: number,
     altitudeMax: number,
     triggered: boolean | undefined,
-    switch: Characteristic,
 }
 
-const TRIGGER_ON = 0;
-const TRIGGER_OFF = 1;
+const TRIGGER_OFF = 0;
 
 class SunProtect implements AccessoryPlugin {
     private readonly log: Logging;
@@ -113,13 +116,25 @@ class SunProtect implements AccessoryPlugin {
     private readonly altitude: Characteristic;
     private readonly azimuth: Characteristic;
 
-    private readonly triggers: Array<Trigger> = [];
+    private readonly zones: Array<Zone> = [];
     private readonly services: Array<Service> = [];
 
     constructor(log: Logging, config: AccessoryConfig) {
         this.log = log;
         this.name = config.name;
         this.location = config.location;
+
+        // Confi compatibility
+        if (config.triggers) {
+            config.zones = [];
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            config.triggers.forEach((trigger: any) => {
+                config.zones.push({
+                    name: trigger.name,
+                    triggers: [trigger],
+                });
+            });
+        }
 
         const activeService = new hap.Service.Switch(this.name);
         this.altitude = activeService.addCharacteristic(AltitudeCharacteristic);
@@ -130,19 +145,19 @@ class SunProtect implements AccessoryPlugin {
         this.services.push(activeService);
 
         let i = 1;
-        for (const trigger of config.triggers) {
-            const triggerService = new hap.Service.StatelessProgrammableSwitch(trigger.name, '' + i);
-            triggerService.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
-            triggerService.addOptionalCharacteristic(hap.Characteristic.Name);
-            triggerService.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
-            triggerService.getCharacteristic(hap.Characteristic.Name).setValue(trigger.name);
+        for (const zone of config.zones) {
+            const service = new hap.Service.StatelessProgrammableSwitch(zone.name, '' + i);
+            service.addOptionalCharacteristic(hap.Characteristic.ServiceLabelIndex);
+            service.addOptionalCharacteristic(hap.Characteristic.Name);
+            service.getCharacteristic(hap.Characteristic.ServiceLabelIndex).setValue(i++);
+            service.getCharacteristic(hap.Characteristic.Name).setValue(zone.name);
 
-            trigger.switch = triggerService.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent);
-            trigger.switch.setProps({ minValue: 0, maxValue: 1 });
-            trigger.switch.value = TRIGGER_OFF;
+            zone.switch = service.getCharacteristic(hap.Characteristic.ProgrammableSwitchEvent);
+            zone.switch.setProps({ minValue: 0, maxValue: zone.triggers.length });
+            zone.switch.value = TRIGGER_OFF;
 
-            this.triggers.push(trigger);
-            this.services.push(triggerService);
+            this.zones.push(zone);
+            this.services.push(service);
         }
 
         const informationService = new hap.Service.AccessoryInformation()
@@ -160,7 +175,7 @@ class SunProtect implements AccessoryPlugin {
         if (value) {
             this.compute(value as boolean);
         } else {
-            this.triggers.forEach((trigger) => trigger.switch.updateValue(TRIGGER_OFF));
+            this.zones.forEach((zone) => zone.switch.updateValue(TRIGGER_OFF));
         }
     }
 
@@ -197,32 +212,36 @@ class SunProtect implements AccessoryPlugin {
         if (altitude < 0 && azimuth > 180) {
             // End of day, disable
             this.active.updateValue(false);
-            this.triggers.forEach((trigger) => trigger.switch.value = TRIGGER_OFF);
+            this.zones.forEach((zone) => zone.switch.value = TRIGGER_OFF);
         }
-        this.triggers.forEach((trigger) => {
-            let match = true;
-            if (trigger.azimuthMin !== undefined) {
-                match = match && azimuth > trigger.azimuthMin;
-            }
-            if (trigger.azimuthMax !== undefined) {
-                match = match && azimuth < trigger.azimuthMax;
-            }
-            if (trigger.altitudeMin !== undefined) {
-                match = match && altitude > trigger.altitudeMin;
-            }
-            if (trigger.altitudeMax !== undefined) {
-                match = match && altitude < trigger.altitudeMax;
-            }
-            if (match) {
-                this.log.debug(trigger.name + ' match criterias');
-                if (trigger.switch.value !== TRIGGER_ON) {
-                    this.log.info('Start trigger ' + trigger.name);
-                    trigger.switch.setValue(TRIGGER_ON);
+        this.zones.forEach((zone) => {
+            const index = zone.triggers.findIndex((trigger) => {
+                let match = true;
+                if (trigger.azimuthMin !== undefined) {
+                    match = match && azimuth > trigger.azimuthMin;
+                }
+                if (trigger.azimuthMax !== undefined) {
+                    match = match && azimuth < trigger.azimuthMax;
+                }
+                if (trigger.altitudeMin !== undefined) {
+                    match = match && altitude > trigger.altitudeMin;
+                }
+                if (trigger.altitudeMax !== undefined) {
+                    match = match && altitude < trigger.altitudeMax;
+                }
+                return match;
+            });
+            if (index === -1) {
+                if (zone.switch.value !== TRIGGER_OFF) {
+                    this.log.info('End trigger ' + zone.name);
+                    zone.switch.setValue(TRIGGER_OFF);
                 }
             } else {
-                if (trigger.switch.value !== TRIGGER_OFF) {
-                    this.log.info('End trigger ' + trigger.name);
-                    trigger.switch.setValue(TRIGGER_OFF);
+                const triggerId = (index + 1);
+                this.log.debug(zone.name + ' match criterias ' + triggerId);
+                if (zone.switch.value !== triggerId) {
+                    this.log.info('Start trigger ' + zone.name);
+                    zone.switch.setValue(triggerId);
                 }
             }
         });
