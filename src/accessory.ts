@@ -137,6 +137,7 @@ class SunProtect implements AccessoryPlugin {
         }
 
         const activeService = new hap.Service.Switch(this.name);
+        activeService.setPrimaryService(true);
         this.altitude = activeService.addCharacteristic(AltitudeCharacteristic);
         this.azimuth = activeService.addCharacteristic(AzimuthCharacteristic);
         this.active = activeService.getCharacteristic(hap.Characteristic.On);
