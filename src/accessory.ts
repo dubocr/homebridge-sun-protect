@@ -13,6 +13,7 @@ import {
     WithUUID,
 } from 'homebridge';
 import suncalc from 'suncalc';
+import storage from 'node-persist';
 
 /*
  * IMPORTANT NOTICE
@@ -38,6 +39,7 @@ import suncalc from 'suncalc';
  * like this for example and used to access all exported variables and classes from HAP-NodeJS.
  */
 let hap: HAP;
+let homebridge: API;
 let AltitudeCharacteristic: WithUUID<{ new(): Characteristic }>;
 let AzimuthCharacteristic: WithUUID<{ new(): Characteristic }>;
 
@@ -45,6 +47,7 @@ let AzimuthCharacteristic: WithUUID<{ new(): Characteristic }>;
  * Initializer function called when the plugin is loaded.
  */
 export = (api: API) => {
+    homebridge = api;
     hap = api.hap;
 
     AltitudeCharacteristic = class extends hap.Characteristic {
@@ -106,7 +109,6 @@ interface Trigger {
 const TRIGGER_OFF = 0;
 
 class SunProtect implements AccessoryPlugin {
-    private readonly log: Logging;
     private readonly name: string;
     private location: Location;
 
@@ -119,14 +121,16 @@ class SunProtect implements AccessoryPlugin {
     private readonly zones: Array<Zone> = [];
     private readonly services: Array<Service> = [];
 
-    constructor(log: Logging, config: AccessoryConfig) {
-        this.log = log;
+    private readonly storage;
+
+    constructor(private log: Logging, private config: AccessoryConfig) {
         this.name = config.name;
         this.location = config.location;
+        this.storage = storage.create();
 
         // Confi compatibility
-        if (config.triggers) {
-            config.zones = [];
+        if (this.config.triggers) {
+            this.config.zones = [];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             config.triggers.forEach((trigger: any) => {
                 config.zones.push({
@@ -142,7 +146,6 @@ class SunProtect implements AccessoryPlugin {
         this.azimuth = activeService.addCharacteristic(AzimuthCharacteristic);
         this.active = activeService.getCharacteristic(hap.Characteristic.On);
 
-        this.active.onSet(this.onActivate.bind(this));
         this.services.push(activeService);
 
         let i = 1;
@@ -166,13 +169,22 @@ class SunProtect implements AccessoryPlugin {
             .setCharacteristic(hap.Characteristic.Model, 'SunProtect');
         this.services.push(informationService);
 
-        setInterval(() => this.compute(this.active.value as boolean), (this.refreshDelay * 1000));
-        this.compute(false);
-
-        log.info('SunProtect initialized!');
+        this.init().catch(log.error.bind(this));
     }
 
-    private onActivate(value: CharacteristicValue) {
+    private async init() {
+        const dir = homebridge.user.persistPath();
+        this.storage.init({ dir: dir, forgiveParseErrors: true });
+        this.active
+            .onSet(this.onActivate.bind(this))
+            .value = await this.storage.getItem(this.name) || false;
+
+        setInterval(() => this.compute(this.active.value as boolean), (this.refreshDelay * 1000));
+        this.compute(false);
+    }
+
+    private async onActivate(value: CharacteristicValue) {
+        await this.storage.setItem(this.name, value);
         if (value) {
             this.compute(value as boolean);
         } else {
