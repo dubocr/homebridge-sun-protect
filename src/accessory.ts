@@ -123,6 +123,8 @@ class SunProtect implements AccessoryPlugin {
 
     private readonly storage;
 
+    private silentSwitchOff: boolean;
+
     constructor(private log: Logging, private config: AccessoryConfig) {
         this.name = config.name;
         this.location = config.location;
@@ -139,6 +141,7 @@ class SunProtect implements AccessoryPlugin {
                 });
             });
         }
+        this.silentSwitchOff = this.config.silentSwitchOff || false;
 
         const activeService = new hap.Service.Switch(this.name);
         activeService.setPrimaryService(true);
@@ -187,7 +190,7 @@ class SunProtect implements AccessoryPlugin {
         await this.storage.setItem(this.name, value);
         if (value) {
             this.compute(value as boolean);
-        } else {
+        } else if(!this.silentSwitchOff) {
             this.zones.forEach((zone) => zone.switch.updateValue(TRIGGER_OFF));
         }
     }
@@ -224,8 +227,7 @@ class SunProtect implements AccessoryPlugin {
         this.log.debug('Altitude: ' + Math.round(altitude * 100) / 100 + ' - Azimuth: ' + Math.round(azimuth * 100) / 100);
         if (altitude < 0 && azimuth > 180) {
             // End of day, disable
-            this.active.updateValue(false);
-            this.zones.forEach((zone) => zone.switch.value = TRIGGER_OFF);
+            this.active.setValue(false);
         }
         this.zones.forEach((zone) => {
             const index = zone.triggers.findIndex((trigger) => {

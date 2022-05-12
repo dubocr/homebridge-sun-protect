@@ -24,7 +24,7 @@ There is one button by zone configured in plugin config.
 - 1 press button is triggered when condition stops: no trigger match
 - 2-3 press button is triggered when first trigger conditions matches
 
-When main switch is switched off, 1 press button will be triggered for each zone.
+When main switch is switched off, 1 press button will be triggered for each zone. To avoid triggering, add `silentSwitchOff` with value `true` to the config.
 
 LIMITATION : All zone must have 2nd trigger in config to activate 3rd press button
 
@@ -45,6 +45,7 @@ Full configuration example:
                 "lat": 46.123456,
                 "long": -1.123456
             },
+            "silentSwitchOff": false,
             "zones": [
                 {
                     "name": "1st floor - South East",
